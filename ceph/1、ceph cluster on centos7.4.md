@@ -117,8 +117,7 @@ yum install ceph ceph-radosgw rdate -y
 1.5.39
 [root@ceph-1 ~]# ceph -v
 ceph version 10.2.10 (5dc1e4c05cb68dbf62ae6fce3f0700e4654fdbbe)
-```
-
+``
 + 在部署节点创建部署目录并开始部署：
 ```bash
 [[root@ceph-1 ~]# cd
@@ -144,19 +143,19 @@ ceph version 10.2.10 (5dc1e4c05cb68dbf62ae6fce3f0700e4654fdbbe)
 ..
 ceph_deploy.new][WARNIN] could not connect via SSH
 [ceph_deploy.new][INFO  ] will connect again with password prompt
-The authenticity of host 'ceph-2 (192.168.57.223)' can't be established.
+The authenticity of host 'ceph-2 (192.168.2.106)' can't be established.
 ECDSA key fingerprint is ef:e2:3e:38:fa:47:f4:61:b7:4d:d3:24:de:d4:7a:54.
 Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added 'ceph-2,192.168.57.223' (ECDSA) to the list of known hosts.
+Warning: Permanently added 'ceph-2,192.168.2.106' (ECDSA) to the list of known hosts.
 root
 root@ceph-2's password: 
 [ceph-2][DEBUG ] connected to host: ceph-2 
 ..
 ..
 [ceph_deploy.new][DEBUG ] Resolving host ceph-3
-[ceph_deploy.new][DEBUG ] Monitor ceph-3 at 192.168.57.224
+[ceph_deploy.new][DEBUG ] Monitor ceph-3 at 192.168.2.107
 [ceph_deploy.new][DEBUG ] Monitor initial members are ['ceph-1', 'ceph-2', 'ceph-3']
-[ceph_deploy.new][DEBUG ] Monitor addrs are ['192.168.57.222', '192.168.57.223', '192.168.57.224']
+[ceph_deploy.new][DEBUG ] Monitor addrs are ['192.168.2.105', '192.168.2.106', '192.168.2.107']
 [ceph_deploy.new][DEBUG ] Creating a random mon key...
 [ceph_deploy.new][DEBUG ] Writing monitor keyring to ceph.mon.keyring...
 [ceph_deploy.new][DEBUG ] Writing initial config to ceph.conf...
@@ -168,7 +167,7 @@ ceph.conf  ceph-deploy-ceph.log  ceph.mon.keyring
 ```
 根据自己的IP配置向ceph.conf中添加public_network，并稍微增大mon之间时差允许范围(默认为0.05s，现改为2s)：
 ```bash
-[root@ceph-1 cluster]# echo public_network=192.168.57.0/24 >> ceph.conf 
+[root@ceph-1 cluster]# echo public_network=192.168.2.0/24 >> ceph.conf 
 [root@ceph-1 cluster]# echo mon_clock_drift_allowed = 2 >> ceph.conf 
 [root@ceph-1 cluster]# cat ceph.conf 
 [global]
