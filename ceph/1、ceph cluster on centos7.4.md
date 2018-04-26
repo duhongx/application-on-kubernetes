@@ -60,7 +60,6 @@ sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 
 4. 配置 hostname和host
 设置3台机器的hostname
-
 ```bash
 hostnamectl set-hostname ceph-1
 vim /etc/hosts
@@ -79,180 +78,202 @@ ssh-copy-id -i /root/.ssh/id_rsa.pub root@ceph-3
 
 
 ## 安装 Ceph-deploy
-管理节点 安装 ceph-deploy 管理工具
-配置 官方 的 Ceph 源
-rpm --import https://download.ceph.com/keys/release.asc
-rpm -Uvh --replacepkgs https://download.ceph.com/rpm-jewel/el7/noarch/ceph-release-1-0.el7.noarch.rpm
-安装 epel 源
-rpm -Uvh http://mirrors.ustc.edu.cn/centos/7/extras/x86_64/Packages/epel-release-7-9.noarch.rpm
-[root@k8s-node1 ~]# yum makecache
-[root@k8s-node1 ~]# yum -y install ceph-deploy
 
-## 创建 Ceph-Mon
-创建集群目录，用于存放配置文件，证书等信息
++ yum源及ceph的安装
+需要在每个主机上执行以下指令
 ```bash
-[root@k8s-node1 ~]# mkdir -p /opt/ceph-cluster
-[root@k8s-node1 ~]# cd /opt/ceph-cluster/
+yum clean all
+rm -rf /etc/yum.repos.d/*.repo
+wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+sed -i '/aliyuncs/d' /etc/yum.repos.d/CentOS-Base.repo
+sed -i '/aliyuncs/d' /etc/yum.repos.d/epel.repo
+sed -i 's/$releasever/7/g' /etc/yum.repos.d/CentOS-Base.repo
 ```
-创建ceph-mon 节点
++ 增加ceph的源
 ```bash
-[root@k8s-node1 /opt/ceph-cluster]# ceph-deploy new k8s-node1 k8s-node2 k8s-node3
+vim /etc/yum.repos.d/ceph.repo
+[ceph]
+name=ceph
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/x86_64/
+gpgcheck=0
+[ceph-noarch]
+name=cephnoarch
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/noarch/
+gpgcheck=0
+```
++ 安装ceph客户端
+```bash
+yum makecache
+yum install ceph ceph-radosgw rdate -y
+```
+
+
+## 开始部署ceph jewel
++ 在部署节点(ceph-1)安装ceph-deploy，下文的部署节点统一指ceph-1:
+```bash
+[root@ceph-1 ~]# yum -y install ceph-deploy
+[root@ceph-1 ~]# ceph-deploy --version
+1.5.39
+[root@ceph-1 ~]# ceph -v
+ceph version 10.2.10 (5dc1e4c05cb68dbf62ae6fce3f0700e4654fdbbe)
+```
+
++ 在部署节点创建部署目录并开始部署：
+```bash
+[[root@ceph-1 ~]# cd
+[root@ceph-1 ~]# mkdir -pv /opt/cluster
+[root@ceph-1 ~]# cd /opt/cluster/
+[root@ceph-1 cluster]# ceph-deploy new ceph-1 ceph-2 ceph-3
+```
+如果之前没有ssh-copy-id到各个节点，则需要输入一下密码，过程log如下：
+```bash
 [ceph_deploy.conf][DEBUG ] found configuration file at: /root/.cephdeploy.conf
-[ceph_deploy.cli][INFO  ] Invoked (1.5.39): /usr/bin/ceph-deploy new k8s-node1 k8s-node2 k8s-node3
+[ceph_deploy.cli][INFO  ] Invoked (1.5.34): /usr/bin/ceph-deploy new ceph-1 ceph-2 ceph-3
 [ceph_deploy.cli][INFO  ] ceph-deploy options:
 [ceph_deploy.cli][INFO  ]  username                      : None
-[ceph_deploy.cli][INFO  ]  func                          : <function new at 0xf82848>
+[ceph_deploy.cli][INFO  ]  func                          : <function new at 0x7f91781f96e0>
 [ceph_deploy.cli][INFO  ]  verbose                       : False
 [ceph_deploy.cli][INFO  ]  overwrite_conf                : False
 [ceph_deploy.cli][INFO  ]  quiet                         : False
-[ceph_deploy.cli][INFO  ]  cd_conf                       : <ceph_deploy.conf.cephdeploy.Conf instance at 0xfa4a28>
+[ceph_deploy.cli][INFO  ]  cd_conf                       : <ceph_deploy.conf.cephdeploy.Conf instance at 0x7f917755ca28>
 [ceph_deploy.cli][INFO  ]  cluster                       : ceph
 [ceph_deploy.cli][INFO  ]  ssh_copykey                   : True
-[ceph_deploy.cli][INFO  ]  mon                           : ['k8s-node1', 'k8s-node2', 'k8s-node3']
-[ceph_deploy.cli][INFO  ]  public_network                : None
-[ceph_deploy.cli][INFO  ]  ceph_conf                     : None
-[ceph_deploy.cli][INFO  ]  cluster_network               : None
-[ceph_deploy.cli][INFO  ]  default_release               : False
-[ceph_deploy.cli][INFO  ]  fsid                          : None
-[ceph_deploy.new][DEBUG ] Creating new cluster named ceph
-[ceph_deploy.new][INFO  ] making sure passwordless SSH succeeds
-[k8s-node1][DEBUG ] connected to host: k8s-node1 
-[k8s-node1][DEBUG ] detect platform information from remote host
-[k8s-node1][DEBUG ] detect machine type
-[k8s-node1][DEBUG ] find the location of an executable
-[k8s-node1][INFO  ] Running command: /usr/sbin/ip link show
-[k8s-node1][INFO  ] Running command: /usr/sbin/ip addr show
-[k8s-node1][DEBUG ] IP addresses found: [u'172.30.89.1', u'172.30.89.0', u'192.168.5.106']
-[ceph_deploy.new][DEBUG ] Resolving host k8s-node1
-[ceph_deploy.new][DEBUG ] Monitor k8s-node1 at 192.168.5.106
-[ceph_deploy.new][INFO  ] making sure passwordless SSH succeeds
-[k8s-node2][DEBUG ] connected to host: k8s-node1 
-[k8s-node2][INFO  ] Running command: ssh -CT -o BatchMode=yes k8s-node2
-[k8s-node2][DEBUG ] connected to host: k8s-node2 
-[k8s-node2][DEBUG ] detect platform information from remote host
-[k8s-node2][DEBUG ] detect machine type
-[k8s-node2][DEBUG ] find the location of an executable
-[k8s-node2][INFO  ] Running command: /usr/sbin/ip link show
-[k8s-node2][INFO  ] Running command: /usr/sbin/ip addr show
-[k8s-node2][DEBUG ] IP addresses found: [u'192.168.5.107', u'172.30.92.1', u'172.30.92.0']
-[ceph_deploy.new][DEBUG ] Resolving host k8s-node2
-[ceph_deploy.new][DEBUG ] Monitor k8s-node2 at 192.168.5.107
-[ceph_deploy.new][INFO  ] making sure passwordless SSH succeeds
-[k8s-node3][DEBUG ] connected to host: k8s-node1 
-[k8s-node3][INFO  ] Running command: ssh -CT -o BatchMode=yes k8s-node3
-[k8s-node3][DEBUG ] connected to host: k8s-node3 
-[k8s-node3][DEBUG ] detect platform information from remote host
-[k8s-node3][DEBUG ] detect machine type
-[k8s-node3][DEBUG ] find the location of an executable
-[k8s-node3][INFO  ] Running command: /usr/sbin/ip link show
-[k8s-node3][INFO  ] Running command: /usr/sbin/ip addr show
-[k8s-node3][DEBUG ] IP addresses found: [u'172.30.62.0', u'172.30.62.1', u'192.168.5.108']
-[ceph_deploy.new][DEBUG ] Resolving host k8s-node3
-[ceph_deploy.new][DEBUG ] Monitor k8s-node3 at 192.168.5.108
-[ceph_deploy.new][DEBUG ] Monitor initial members are ['k8s-node1', 'k8s-node2', 'k8s-node3']
-[ceph_deploy.new][DEBUG ] Monitor addrs are ['192.168.5.106', '192.168.5.107', '192.168.5.108']
+[ceph_deploy.cli][INFO  ]  mon                           : ['ceph-1', 'ceph-2', 'ceph-3']
+..
+..
+ceph_deploy.new][WARNIN] could not connect via SSH
+[ceph_deploy.new][INFO  ] will connect again with password prompt
+The authenticity of host 'ceph-2 (192.168.57.223)' can't be established.
+ECDSA key fingerprint is ef:e2:3e:38:fa:47:f4:61:b7:4d:d3:24:de:d4:7a:54.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added 'ceph-2,192.168.57.223' (ECDSA) to the list of known hosts.
+root
+root@ceph-2's password: 
+[ceph-2][DEBUG ] connected to host: ceph-2 
+..
+..
+[ceph_deploy.new][DEBUG ] Resolving host ceph-3
+[ceph_deploy.new][DEBUG ] Monitor ceph-3 at 192.168.57.224
+[ceph_deploy.new][DEBUG ] Monitor initial members are ['ceph-1', 'ceph-2', 'ceph-3']
+[ceph_deploy.new][DEBUG ] Monitor addrs are ['192.168.57.222', '192.168.57.223', '192.168.57.224']
 [ceph_deploy.new][DEBUG ] Creating a random mon key...
 [ceph_deploy.new][DEBUG ] Writing monitor keyring to ceph.mon.keyring...
 [ceph_deploy.new][DEBUG ] Writing initial config to ceph.conf...
 ```
-查看配置文件
+此时，目录内容如下：
 ```bash
-[root@k8s-node1 /opt/ceph-cluster]# more ceph.conf 
+[[root@ceph-1 cluster]# ls
+ceph.conf  ceph-deploy-ceph.log  ceph.mon.keyring
+```
+根据自己的IP配置向ceph.conf中添加public_network，并稍微增大mon之间时差允许范围(默认为0.05s，现改为2s)：
+```bash
+[root@ceph-1 cluster]# echo public_network=192.168.57.0/24 >> ceph.conf 
+[root@ceph-1 cluster]# echo mon_clock_drift_allowed = 2 >> ceph.conf 
+[root@ceph-1 cluster]# cat ceph.conf 
 [global]
-fsid = 8d0bed2b-5ec0-4b68-b145-1fcecc31cd69
-mon_initial_members = k8s-node1, k8s-node2, k8s-node3
-mon_host = 192.168.5.106,192.168.5.107,192.168.5.108
+fsid = e177bed7-0210-457f-bba0-f7e66813560e
+mon_initial_members = ceph-1, ceph-2, ceph-3
+mon_host = 192.168.2.105,192.168.2.106,192.168.2.107
 auth_cluster_required = cephx
 auth_service_required = cephx
 auth_client_required = cephx
-```
-修改 osd 的副本数，既数据保存N份。
-```bash
-[root@k8s-node1 /opt/ceph-cluster]# echo 'osd_pool_default_size = 2' >> ./ceph.conf
-```
-注: 如果文件系统为 ext4 请添加
-```bash
-[root@k8s-node1 /opt/ceph-cluster]# echo 'osd max object name len = 256' >> ./ceph.conf
-[root@k8s-node1 /opt/ceph-cluster]# echo 'osd max object namespace len = 64' >> ./ceph.conf
+
+public_network=192.168.2.0/24
+mon_clock_drift_allowed = 2
 ```
 
-## 安装 Ceph
+开始部署monitor:
 ```bash
-[root@k8s-node1 /opt/ceph-cluster]# ceph-deploy install k8s-node1 k8s-node2 k8s-node3 k8s-node4 k8s-node5
-[ceph_deploy.conf][DEBUG ] found configuration file at: /root/.cephdeploy.conf
-[ceph_deploy.cli][INFO  ] Invoked (1.5.39): /usr/bin/ceph-deploy install k8s-node1 k8s-node2 k8s-node3 k8s-node4 k8s-node5
-[ceph_deploy.cli][INFO  ] ceph-deploy options:
----------------------------------------
-[k8s-node5][DEBUG ] Dependency Updated:
-[k8s-node5][DEBUG ]   cryptsetup-libs.x86_64 0:1.7.4-3.el7_4.1                                      
-[k8s-node5][DEBUG ]   device-mapper.x86_64 7:1.02.140-8.el7                                         
-[k8s-node5][DEBUG ]   device-mapper-libs.x86_64 7:1.02.140-8.el7                                    
-[k8s-node5][DEBUG ]   selinux-policy.noarch 0:3.13.1-166.el7_4.7                                    
-[k8s-node5][DEBUG ]   selinux-policy-targeted.noarch 0:3.13.1-166.el7_4.7                           
-[k8s-node5][DEBUG ] 
-[k8s-node5][DEBUG ] Complete!
-[k8s-node5][INFO  ] Running command: ceph --version
-[k8s-node5][DEBUG ] ceph version 10.2.10 (5dc1e4c05cb68dbf62ae6fce3f0700e4654fdbbe)
-```
-检测安装
-```bash
-[root@k8s-node1 /opt/ceph-cluster]# ceph --version
-ceph version 10.2.10 (5dc1e4c05cb68dbf62ae6fce3f0700e4654fdbbe)
+[root@ceph-1 cluster]# ceph-deploy mon create-initial
+..
+..若干log
+[root@ceph-1 cluster]# ls
+ceph.bootstrap-mds.keyring  ceph.bootstrap-rgw.keyring  ceph.conf             ceph.mon.keyring
+ceph.bootstrap-osd.keyring  ceph.client.admin.keyring   ceph-deploy-ceph.log
 ```
 
-## 初始化 ceph-mon 节点
+查看集群状态：
 ```bash
-[root@k8s-node1 /opt/ceph-cluster]# ceph-deploy mon create-initial
-[ceph_deploy.conf][DEBUG ] found configuration file at: /root/.cephdeploy.conf
-[ceph_deploy.cli][INFO  ] Invoked (1.5.39): /usr/bin/ceph-deploy mon create-initial
-[ceph_deploy.cli][INFO  ] ceph-deploy options:
-[ceph_deploy.cli][INFO  ]  username                      : None
-[ceph_deploy.cli][INFO  ]  verbose                       : False
-[ceph_deploy.cli][INFO  ]  overwrite_conf                : False
-[ceph_deploy.cli][INFO  ]  subcommand                    : create-initial
-[ceph_deploy.cli][INFO  ]  quiet                         : False
-[ceph_deploy.cli][INFO  ]  cd_conf                       : <ceph_deploy.conf.cephdeploy.Conf instance at 0xa2c7a0>
-[ceph_deploy.cli][INFO  ]  cluster                       : ceph
-[ceph_deploy.cli][INFO  ]  func                          : <function mon at 0xa1c8c0>
-[ceph_deploy.cli][INFO  ]  ceph_conf                     : None
-[ceph_deploy.cli][INFO  ]  default_release               : False
-[ceph_deploy.cli][INFO  ]  keyrings                      : None
-[ceph_deploy.mon][DEBUG ] Deploying mon, cluster ceph hosts k8s-node1 k8s-node2 k8s-node3
-[ceph_deploy.mon][DEBUG ] detecting platform for host k8s-node1 ...
------------------------------------------------
-[k8s-node1][DEBUG ] fetch remote file
-[k8s-node1][INFO  ] Running command: /usr/bin/ceph --connect-timeout=25 --cluster=ceph --admin-daemon=/var/run/ceph/ceph-mon.k8s-node1.asok mon_status
-[k8s-node1][INFO  ] Running command: /usr/bin/ceph --connect-timeout=25 --cluster=ceph --name mon. --keyring=/var/lib/ceph/mon/ceph-k8s-node1/keyring auth get client.admin
-[k8s-node1][INFO  ] Running command: /usr/bin/ceph --connect-timeout=25 --cluster=ceph --name mon. --keyring=/var/lib/ceph/mon/ceph-k8s-node1/keyring auth get client.bootstrap-mds
-[k8s-node1][INFO  ] Running command: /usr/bin/ceph --connect-timeout=25 --cluster=ceph --name mon. --keyring=/var/lib/ceph/mon/ceph-k8s-node1/keyring auth get client.bootstrap-mgr
-[k8s-node1][INFO  ] Running command: /usr/bin/ceph --connect-timeout=25 --cluster=ceph --name mon. --keyring=/var/lib/ceph/mon/ceph-k8s-node1/keyring auth get-or-create client.bootstrap-mgr mon allow profile bootstrap-mgr
-[k8s-node1][INFO  ] Running command: /usr/bin/ceph --connect-timeout=25 --cluster=ceph --name mon. --keyring=/var/lib/ceph/mon/ceph-k8s-node1/keyring auth get client.bootstrap-osd
-[k8s-node1][INFO  ] Running command: /usr/bin/ceph --connect-timeout=25 --cluster=ceph --name mon. --keyring=/var/lib/ceph/mon/ceph-k8s-node1/keyring auth get client.bootstrap-rgw
-[ceph_deploy.gatherkeys][INFO  ] Storing ceph.client.admin.keyring
-[ceph_deploy.gatherkeys][INFO  ] Storing ceph.bootstrap-mds.keyring
-[ceph_deploy.gatherkeys][INFO  ] Storing ceph.bootstrap-mgr.keyring
-[ceph_deploy.gatherkeys][INFO  ] keyring 'ceph.mon.keyring' already exists
-[ceph_deploy.gatherkeys][INFO  ] Storing ceph.bootstrap-osd.keyring
-[ceph_deploy.gatherkeys][INFO  ] Storing ceph.bootstrap-rgw.keyring
-[ceph_deploy.gatherkeys][INFO  ] Destroy temp directory /tmp/tmpwXQ5nH
+[root@ceph-1 cluster]# ceph -s
+    cluster e177bed7-0210-457f-bba0-f7e66813560e
+      health HEALTH_ERR
+            no osds
+            Monitor clock skew detected
+     monmap e1: 3 mons at {ceph-1=192.168.2.105:6789/0,ceph-2=192.168.2.106:6789/0,ceph-3=192.168.2.107:6789/0}
+            election epoch 542, quorum 0,1,2 ceph-1,ceph-2,ceph-3
+     osdmap e1: 0 osds: 0 up, 0 in
+            flags sortbitwise
+      pgmap v2: 64 pgs, 1 pools, 0 bytes data, 0 objects
+            0 kB used, 0 kB / 0 kB avail
+                  64 creating
 ```
 
-## 初始化 ceph.osd 节点
-首先创建 存储空间, 如果使用分区，可略过
-此次创建ceph集群的时候是每个节点都插入一块20G的/dev/vdb1，mkfs.ext4格式化后挂载到/ceph目录上，需要去osd节点上执行如下命令
-chown ceph:ceph /ceph
-启动 osd
+开始部署OSD:
 ```bash
-[root@k8s-node1 /opt/ceph-cluster]# ceph-deploy osd prepare k8s-node2:/ceph k8s-node3:/ceph k8s-node4:/ceph k8s-node5:/ceph
-[ceph_deploy.conf][DEBUG ] found configuration file at: /root/.cephdeploy.conf
-但是测试过程中, 在使用rbd 映射块设备时, 出现一个错误, 如下 : 
+ceph-deploy --overwrite-conf osd prepare ceph-1:/dev/sdb ceph-2:/dev/sdb ceph-3:/dev/sdb --zap-disk
+ceph-deploy --overwrite-conf osd activate ceph-1:/dev/sdb1 ceph-2:/dev/sdb1 ceph-3:/dev/sdb1
+```
+如果不出意外的话，集群状态应该如下：
+```bash
+[root@ceph-1 cluster]# ceph -s
+    cluster e177bed7-0210-457f-bba0-f7e66813560e
+      health HEALTH_WARN
+            too few PGs per OSD (21 < min 30)
+     monmap e1: 3 mons at {ceph-1=192.168.2.105:6789/0,ceph-2=192.168.2.106:6789/0,ceph-3=192.168.2.107:6789/0}
+            election epoch 542, quorum 0,1,2 ceph-1,ceph-2,ceph-3
+     osdmap e376: 3 osds: 3 up, 3 in
+            flags sortbitwise,require_jewel_osds
+      pgmap v105404: 256 pgs, 2 pools, 2057 MB data, 703 objects
+            273 MB used, 129 GB / 134 GB avail
+                 256 active+clean
 
-[root@localhost ~]# rbd map img1 --pool pool1 -m 172.17.0.2 -k /etc/ceph/ceph.client.admin.keyring 
-modinfo: ERROR: Module rbd not found.
-modprobe: FATAL: Module rbd not found.
-rbd: failed to load rbd kernel module (1)
-rbd: sysfs write failed
-rbd: map failed: (2) No such file or directory
+```
 
+去除这个WARN，只需要增加rbd池的PG就好：
+```bash
+[root@ceph-1 cluster]# ceph osd pool set rbd pgp_num 128
+set pool 0 pgp_num to 128
+[root@ceph-1 cluster]# ceph -s
+    cluster e177bed7-0210-457f-bba0-f7e66813560e
+      health ok
+     monmap e1: 3 mons at {ceph-1=192.168.2.105:6789/0,ceph-2=192.168.2.106:6789/0,ceph-3=192.168.2.107:6789/0}
+            election epoch 542, quorum 0,1,2 ceph-1,ceph-2,ceph-3
+     osdmap e376: 3 osds: 3 up, 3 in
+            flags sortbitwise,require_jewel_osds
+      pgmap v105404: 256 pgs, 2 pools, 2057 MB data, 703 objects
+            308 MB used, 129 GB / 134 GB avail
+                 256 active+clean
+```
+稍等一会，集群health就会变成ok，集群部署完毕。
+
+
++ config推送
+请不要使用直接修改某个节点的/etc/ceph/ceph.conf文件的方式，而是去部署节点(此处为ceph-1:/opt/cluster/ceph.conf)目录下修改。因为节点到几十个的时候，不可能一个个去修改的，采用推送的方式快捷安全！
+修改完毕后，执行如下指令，将conf文件推送至各个节点：
+```bash
+[root@ceph-1 cluster]# ceph-deploy --overwrite-conf config push ceph-1 ceph-2 ceph-3
+```
+
++ mon&osd启动方式
+```bash
+#monitor start/stop/restart
+#ceph-1为各个monitor所在节点的主机名。
+systemctl start ceph-mon@ceph-1.service 
+systemctl restart ceph-mon@ceph-1.service
+systemctl stop ceph-mon@ceph-1.service
+#OSD start/stop/restart 
+#0为该节点的OSD的id，可以通过`ceph osd tree`查看
+systemctl start/stop/restart ceph-osd@0.service
+[root@ceph-1 cluster]# ceph osd tree
+ID WEIGHT  TYPE NAME       UP/DOWN REWEIGHT PRIMARY-AFFINITY 
+-1 0.13170 root default                                      
+-2 0.04390     host ceph-1                                   
+ 0 0.04390         osd.0        up  1.00000          1.00000 
+-3 0.04390     host ceph-2                                   
+ 1 0.04390         osd.1        up  1.00000          1.00000 
+-4 0.04390     host ceph-3                                   
+ 2 0.04390         osd.2        up  1.00000          1.00000 
+```
 
 
