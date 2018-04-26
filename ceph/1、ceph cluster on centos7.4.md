@@ -1,35 +1,62 @@
-#  Ceph 安装部署
-+ 由于这里我们使用 RBD 所以我们使用到的组件为 Ceph.mon, Ceph.osd, 这两个组件就可以了。 Ceph.mds 为 cephfs 所需组件
+#  Ceph jewel on centos 7.4安装部署
 
 ## 部署环境
-+ Ceph.Mon = 2n+1 个 ，3个的情况下只能掉线一个，如果同时2个掉线
-+ 集群会出现无法仲裁，集群会一直等待 Ceph.Mon 恢复超过半数。
++ Ceph.Mon = 2n+1 个 ，3个的情况下只能掉线一个，如果同时2个掉线，集群会出现无法仲裁，集群会一直等待 Ceph.Mon 恢复超过半数。本次部署选择3个节点，节点的规划如下
 
-192.168.2.105  Ceph.admin + Ceph.Mon
-192.168.5.106  Ceph.Mon + Ceph.osd
-192.168.5.107  Ceph.Mon + Ceph.osd
-192.168.5.110  Ceph.osd
-192.168.5.111  Ceph.osd
+ceph-1  192.168.2.105  deploy/mon*1/osd*1
+ceph-2  192.168.5.106  mon*1/osd*1
+ceph-3  192.168.5.107  mon*1/osd*1
+
 
 ## 初始化环境
-1. ceph 对时间要求很严格， 一定要同步所有的服务器时间
-开启5台机器上的ntpd服务，并设置开机启动，命令省略
-2. 配置 hostname和host文件
-设置5台机器的hostname
-配置/etc/hosts
+1. 三台机器的centos为最小化安装，时区为默认设置，因此需要修改时区设置
 ```bash
-192.168.5.106  k8s-node1
-192.168.5.107  k8s-node2
-192.168.5.108  k8s-node3
-192.168.5.110  k8s-node4
-192.168.5.111  k8s-node5
+ls -al /etc/localtime
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 ```
-3. Ceph.admin 节点 配置无密码ssh
+
+2. 官方建议在所有 Ceph 节点上安装 NTP 服务（特别是 Ceph Monitor 节点），以免因时钟漂移导致故障。
+因此必须开启3台机器上的ntpd服务，并设置开机启动
+```bash
+yum -y install ntp*
+systemctl start ntpd
+systemctl enable ntpd
+ntpq -p
+```
+备注：需要注意一点，centos7上的ntpd服务设置为开机启动后，重启服务器后ntpd未成功启动，查询资料得知chronyd服务与ntpd冲突导致ntpd开机启动失败，因此需要停止chronyd服务并禁止开机启动。
+```bash
+systemctl stop chronyd   
+systemctl disable chronyd
+```
+
+3. 禁用selinux和firewalld文件
+为了避免不必要的问题，建议关闭selinux和firewalld
+```bash
+systemctl stop firewalld
+systemctl disable firewalld
+systemctl status firewalld
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+```
+
+4. 配置 hostname和host
+设置3台机器的hostname
+
+```bash
+hostnamectl set-hostname ceph-1
+vim /etc/hosts
+192.168.1.105  ceph-1
+192.168.1.106  ceph-2
+192.168.1.107  ceph-3
+```
+5. Ceph deploy节点 配置无密码ssh
+```bash
 ssh-keygen
-ssh-copy-id -i /root/.ssh/id_rsa.pub root@k8s-node2
-ssh-copy-id -i /root/.ssh/id_rsa.pub root@k8s-node3
-ssh-copy-id -i /root/.ssh/id_rsa.pub root@k8s-node4
-ssh-copy-id -i /root/.ssh/id_rsa.pub root@k8s-node5
+ssh-copy-id -i /root/.ssh/id_rsa.pub root@ceph-1
+ssh-copy-id -i /root/.ssh/id_rsa.pub root@ceph-2
+ssh-copy-id -i /root/.ssh/id_rsa.pub root@ceph-3
+```
+完成上述准备工作后，重启三台机器，重启完成后检查ntp是否开机启动，主机名是否都已修改，selinux/firewalld是否成功关闭，ssh互信是否成功。确认无问题后开始部署ceph jewel。
+
 
 ## 安装 Ceph-deploy
 管理节点 安装 ceph-deploy 管理工具
