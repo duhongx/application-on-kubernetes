@@ -3,9 +3,29 @@
 ## 部署环境
 + Ceph.Mon = 2n+1 个 ，3个的情况下只能掉线一个，如果同时2个掉线，集群会出现无法仲裁，集群会一直等待 Ceph.Mon 恢复超过半数。本次部署选择3个节点，节点的规划如下
 
-ceph-1  192.168.2.105  deploy/mon*1/osd*1
-ceph-2  192.168.5.106  mon*1/osd*1
-ceph-3  192.168.5.107  mon*1/osd*1
+<table>
+    <tr>
+        <th rowspan="8">ceph集群机器规划</th>
+        <th>主机名</th>
+        <th>ip地址</th>
+        <th>安装组件</th>
+    </tr>
+    <tr>
+        <td>192.168.2.105</td>
+        <td>ceph-1</td>
+        <td>deploy/mon*1/osd*1</td>
+    </tr>
+    <tr>
+        <td>192.168.2.106</td>
+        <td>ceph-2</td>
+        <td>mon*1/osd*1</td>
+    </tr>  
+    <tr>
+        <td>192.168.2.107</td>
+        <td>ceph-3</td>
+        <td>mon*1/osd*1</td>
+    </tr>
+</table>
 
 
 ## 初始化环境
