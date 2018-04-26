@@ -77,8 +77,8 @@ kubectl create -f ceph-secret.yaml
 ```
 
 + 需要在kubernetes上创建storageclass
-备注：创建的storageclass为default，后续pod或者statefulset需要使用存储数据时只需指定容量即可，不需要指定storageclass的name，比较方便。
 ```bash
+#备注：创建的storageclass为default，后续pod或者statefulset需要使用存储数据时只需指定容量即可，不需要指定storageclass的name，比较方便。
 [root@localhost ~]# more storege.yaml 
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
