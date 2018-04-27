@@ -5,10 +5,9 @@ If the cluster configuration of a redis node is lost in some way, it will come b
 ims to make sure the state of the cluster is maintained after rescheduling or failures.
 
 ## Setup (using minikube)
-1. `minikube start`
-2. `eval $(minikube docker-env)`
-3. `docker build -t redis-cluster:v1 .`
-4. `kubectl apply -f redis-cluster.yml`
+1. `docker build -t 192.168.2.101/k8s/redis:v1 .`
+2. `docker push 192.168.2.101/k8s/redis:v1`
+2. `kubectl apply -f redis-cluster.yml`
 
 This will spin up 6 `redis-cluster` pods one by one, which may take a while. After all pods are in a running state, you can itialize the cluster using the `redis-trib` command in any of the pods. After the initialization, you will end up with 3 master and 3 slave nodes.
 ``` bash
