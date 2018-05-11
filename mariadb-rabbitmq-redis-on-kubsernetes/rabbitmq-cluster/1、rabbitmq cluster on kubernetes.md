@@ -1,4 +1,5 @@
 
+
 ## rabbitmq cluster on kubernetes 
 
 + 使用rabbitmq:3.6.6-management-alpine这个镜像，可以先将镜像直接拉下来，然后打个tag，推到本地的harbor仓库。
@@ -10,6 +11,8 @@ docker push 192.168.2.101/k8s/rabbitmq:3.6.6-management-alpine
 
 + 直接创建rabbitmq cluster
 ```bash
+echo $(openssl rand -base64 32) > erlang.cookie
+kubectl create secret generic erlang.cookie --from-file=erlang.cookie
 kubectl create -f rabbitmq.yaml
 #这个部署较慢，需要耐心等待，pod需要加载一些卷，申请rbd资源，然后格式化挂载，多次查看pod创建过程中的日志和分配node的kubelet日志，来定位问题
 ```
