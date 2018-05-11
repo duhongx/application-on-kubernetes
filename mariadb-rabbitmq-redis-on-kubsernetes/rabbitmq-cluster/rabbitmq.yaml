@@ -71,8 +71,8 @@ spec:
         - name: RABBITMQ_ERLANG_COOKIE
           valueFrom:
             secretKeyRef:
-              name: rabbitmq-config
-              key: erlang-cookie
+              name: erlang.cookie
+              key: erlang.cookie
         ports:
         - containerPort: 5672
           name: amqp
