@@ -47,7 +47,7 @@ spec:
     spec:
       containers:
       - name: rabbitmq
-        image: 192.168.2.101/k8s/rabbitmq:3.6.6-management-alpine
+        image: 192.168.131.223/k8s/rabbitmq:3.6.6-management-alpine
         lifecycle:
           postStart:
             exec:
@@ -79,6 +79,12 @@ spec:
         volumeMounts:
         - name: rabbitmq
           mountPath: /var/lib/rabbitmq
+        - name: time
+          mountPath: /etc/localtime
+      volumes:
+        - name: time
+          hostPath:
+            path: /usr/share/zoneinfo/Asia/Shanghai    
   volumeClaimTemplates:
   - metadata:
       name: rabbitmq
@@ -88,4 +94,4 @@ spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 5Gi # make this bigger in production
+          storage: 10Gi # make this bigger in production
