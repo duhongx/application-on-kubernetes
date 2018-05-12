@@ -20,11 +20,6 @@ spec:
       - name: manager-web
         image: 192.168.131.223/k8s/manager-web
         imagePullPolicy: Always
-        lifecycle:
-          preStop:
-            exec:
-              # nginx -s quit gracefully terminate while SIGTERM triggers a quick exit
-              command: ["/bin/bash", "-c", "PID=`pidof java` && kill -SIGTERM $PID && while ps -p $PID > /dev/null; do sleep 1; done;"]
         resources:
           limits:
             memory: "4000Mi"
