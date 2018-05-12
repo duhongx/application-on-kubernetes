@@ -1,0 +1,38 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: manager-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: manager-web
+  template:
+    metadata:
+      labels:
+        app: manager-web
+    spec:
+      volumes:
+      - name: logs-volume
+        hostPath:
+          path: /opt/logs/manager-web
+      containers:
+      - name: manager-web
+        image: 192.168.131.223/k8s/manager-web
+        imagePullPolicy: Always
+        lifecycle:
+          preStop:
+            exec:
+              # nginx -s quit gracefully terminate while SIGTERM triggers a quick exit
+              command: ["/bin/bash", "-c", "PID=`pidof java` && kill -SIGTERM $PID && while ps -p $PID > /dev/null; do sleep 1; done;"]
+        resources:
+          limits:
+            memory: "4000Mi"
+            cpu: "2000m"
+        volumeMounts:
+          - mountPath: /opt/logs
+            name: logs-volume
+        ports:
+        - containerPort: 4889
+#      imagePullSecrets:
+#      - name: myregistrykey
