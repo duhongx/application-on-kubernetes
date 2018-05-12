@@ -1,0 +1,38 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: manager-qgsp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: manager-qgsp
+  template:
+    metadata:
+      labels:
+        app: manager-qgsp
+    spec:
+      volumes:
+      - name: logs-volume
+        hostPath:
+          path: /opt/logs/manager-qgsp
+      containers:
+      - name: manager-qgsp
+        image: 192.168.131.223/k8s/manager-qgsp
+        imagePullPolicy: Always
+        lifecycle:
+          preStop:
+            exec:
+              # nginx -s quit gracefully terminate while SIGTERM triggers a quick exit
+              command: ["/bin/bash", "-c", "PID=`pidof java` && kill -SIGTERM $PID && while ps -p $PID > /dev/null; do sleep 1; done;"]
+        resources:
+          limits:
+            memory: "6000Mi"
+            cpu: "2000m"
+        volumeMounts:
+          - mountPath: /opt/logs
+            name: logs-volume
+        ports:
+        - containerPort: 8080
+#      imagePullSecrets:
+#      - name: myregistrykey
