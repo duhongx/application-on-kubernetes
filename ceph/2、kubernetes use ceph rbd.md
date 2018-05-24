@@ -93,7 +93,7 @@ parameters:
     monitors: 192.168.2.105:6789,192.168.2.106:6789,192.168.2.107:6789
     adminId: admin
     adminSecretName: ceph-secret
-    adminSecretNamespace: kube-system
+    adminSecretNamespace: default
     pool: k8s
     userId: admin
     userSecretName: ceph-secret
